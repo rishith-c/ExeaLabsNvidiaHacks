@@ -70,3 +70,22 @@ To commit a scan for CAP-3, AirDrop `roomplan.json` to the Mac and put it at `sc
   is unchecked; with no depth the recorder keeps nothing and the scan page says so.
 - Command-line compile check without signing:
   `xcodebuild -project ios/ArrivalCapture/ArrivalCapture.xcodeproj -target ArrivalCapture -sdk iphoneos CODE_SIGNING_ALLOWED=NO SYMROOT=ios/build build`
+
+## Visual style and UI checks
+
+The capture app shares the website's paper-and-ink palette, subtle drafting grid, serif headings,
+monospaced section labels and orange accents. Named color assets supply light and dark appearances;
+native fonts follow Dynamic Type, and button motion respects Reduce Motion. The home screen puts
+capture first, saved surveys second and the server connection last. Scan details and RoomPlan's
+surrounding controls use the same theme; RoomPlan still supplies the live camera and coaching.
+
+For a simulator-only UI build (no signing team needed):
+
+```bash
+xcodebuild -project ios/ArrivalCapture/ArrivalCapture.xcodeproj -scheme ArrivalCapture \
+  -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+```
+
+Check both appearances and an accessibility text size in Simulator. RoomPlan capture is disabled
+there: verify live coaching, Done, Save, Cancel and RGB-D recording on a supported LiDAR device before
+field use. The simulator build and screenshots do not establish capture quality or hardware behavior.
