@@ -12,43 +12,36 @@ struct ContentView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    TextField("http://192.168.1.20:8000", text: $serverURL)
-                        .keyboardType(.URL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    Button {
-                        Task { await ping() }
-                    } label: {
-                        HStack {
-                            Text("Test connection")
-                            if pinging { Spacer(); ProgressView() }
-                        }
-                    }
-                    .disabled(serverURL.isEmpty || pinging)
-                    if let pingText {
-                        Text(pingText).font(.footnote).foregroundStyle(.secondary)
-                    }
-                } header: {
-                    Text("Arrival server")
-                } footer: {
-                    Text("On a Mac on the same Wi-Fi, run `python -m arrival serve --host 0.0.0.0` and `python -m arrival work`. The serve command prints this URL.")
-                }
+            List {
+                ArrivalFieldHeader()
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                    .listRowSeparator(.hidden)
 
                 Section {
-                    TextField("kitchen_a", text: $roomName)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
+                    LabeledContent("Room name") {
+                        TextField("kitchen_a", text: $roomName)
+                            .multilineTextAlignment(.trailing)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .accessibilityLabel("Room name")
+                    }
                     Toggle("Record RGB-D frames", isOn: $recordFrames)
                     Button {
                         capturing = true
                     } label: {
-                        Label("Scan room", systemImage: "camera.metering.matrix")
+                        HStack {
+                            Label("Scan room", systemImage: "viewfinder")
+                            Spacer()
+                            Image(systemName: "arrow.up.right")
+                                .foregroundStyle(ArrivalTheme.signal)
+                                .accessibilityHidden(true)
+                        }
                     }
+                    .buttonStyle(ArrivalActionStyle(primary: true))
                     .disabled(!RoomCaptureSession.isSupported)
                 } header: {
-                    Text("New scan")
+                    ArrivalSectionHeading(number: "01", title: "New survey")
                 } footer: {
                     if RoomCaptureSession.isSupported {
                         Text("Saved as \(ScanStore.roomID(roomName)). Walk the room slowly and point at every wall, counter and appliance."
@@ -57,10 +50,22 @@ struct ContentView: View {
                         Text("RoomPlan needs a LiDAR device: iPhone 12 Pro or newer Pro, or iPad Pro 2020+.")
                     }
                 }
+                .listRowBackground(ArrivalTheme.panel)
 
-                Section("Scans") {
+                Section {
                     if store.scans.isEmpty {
-                        Text("No scans yet").foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Image(systemName: "square.dashed")
+                                .font(.title2)
+                                .foregroundStyle(ArrivalTheme.signalInk)
+                                .accessibilityHidden(true)
+                            Text("Your room starts here.")
+                                .font(ArrivalTheme.heading(.title3))
+                            Text("Saved surveys stay on this device. Open one to review, share or upload it.")
+                                .font(.subheadline)
+                                .foregroundStyle(ArrivalTheme.muted)
+                        }
+                        .padding(.vertical, 12)
                     }
                     ForEach(store.scans) { scan in
                         NavigationLink(value: scan.id) {
@@ -70,15 +75,65 @@ struct ContentView: View {
                     .onDelete { offsets in
                         offsets.map { store.scans[$0] }.forEach(store.delete)
                     }
+                } header: {
+                    ArrivalSectionHeading(number: "02", title: "Saved surveys · \(store.scans.count)")
                 }
+                .listRowBackground(ArrivalTheme.panel)
+
+                Section {
+                    TextField("http://192.168.1.20:8000", text: $serverURL)
+                        .font(ArrivalTheme.label(.subheadline))
+                        .keyboardType(.URL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .accessibilityLabel("Arrival server URL")
+                    Button {
+                        Task { await ping() }
+                    } label: {
+                        HStack {
+                            Text("Test connection")
+                            Spacer()
+                            if pinging {
+                                ProgressView()
+                            } else {
+                                Image(systemName: "arrow.right")
+                                    .accessibilityHidden(true)
+                            }
+                        }
+                    }
+                    .buttonStyle(ArrivalActionStyle())
+                    .disabled(serverURL.isEmpty || pinging)
+                    if let pingText {
+                        Text(pingText)
+                            .font(.footnote)
+                            .foregroundStyle(ArrivalTheme.muted)
+                            .accessibilityAddTraits(.updatesFrequently)
+                    }
+                } header: {
+                    ArrivalSectionHeading(number: "03", title: "Arrival server")
+                } footer: {
+                    Text("Connect when you're ready to turn a scan into a twin. On a Mac on the same Wi-Fi, run `python -m arrival serve --host 0.0.0.0` and `python -m arrival work`. The serve command prints this URL.")
+                }
+                .listRowBackground(ArrivalTheme.panel)
             }
-            .navigationTitle("Arrival Capture")
+            .listStyle(.insetGrouped)
+            .listSectionSpacing(16)
+            .scrollContentBackground(.hidden)
+            .listRowSeparatorTint(ArrivalTheme.rule)
+            .foregroundStyle(ArrivalTheme.ink)
+            .background(ArrivalPaper())
+            .tint(ArrivalTheme.signalInk)
+            .navigationTitle("Field notes")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(ArrivalTheme.paper, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .navigationDestination(for: String.self) { ScanDetailView(scanID: $0) }
             .fullScreenCover(isPresented: $capturing) {
                 CaptureScreen(roomName: ScanStore.roomID(roomName), recordFrames: recordFrames)
                     .environmentObject(store)
             }
         }
+        .tint(ArrivalTheme.signalInk)
     }
 
     private func ping() async {
@@ -97,8 +152,8 @@ private struct ScanRow: View {
     let scan: Scan
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(scan.roomName).font(.headline)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(scan.roomName).font(ArrivalTheme.heading(.headline))
             HStack {
                 Text(scan.created, style: .date)
                 Text(scan.created, style: .time)
@@ -106,8 +161,8 @@ private struct ScanRow: View {
                     Text("· \(status)")
                 }
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            .font(ArrivalTheme.label())
+            .foregroundStyle(ArrivalTheme.muted)
         }
     }
 }
@@ -125,7 +180,23 @@ struct ScanDetailView: View {
     var body: some View {
         if let scan = store.scans.first(where: { $0.id == scanID }) {
             Form {
-                Section("Files") {
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("SURVEY RECORD")
+                            .font(ArrivalTheme.label())
+                            .tracking(1.5)
+                            .foregroundStyle(ArrivalTheme.signalInk)
+                        Text(scan.roomName)
+                            .font(ArrivalTheme.heading(.largeTitle))
+                        Text("A room captured. A twin to build.")
+                            .font(.subheadline)
+                            .foregroundStyle(ArrivalTheme.muted)
+                    }
+                    .padding(.vertical, 8)
+                }
+                .listRowBackground(Color.clear)
+
+                Section {
                     LabeledContent("Room", value: scan.roomName)
                     LabeledContent("Scanned", value: scan.created.formatted(date: .abbreviated, time: .shortened))
                     ForEach(store.files(scan), id: \.self) { url in
@@ -142,7 +213,11 @@ struct ScanDetailView: View {
                     ShareLink(items: store.files(scan)) {
                         Label("Share / AirDrop", systemImage: "square.and.arrow.up")
                     }
+                    .buttonStyle(ArrivalActionStyle())
+                } header: {
+                    ArrivalSectionHeading(number: "01", title: "Capture files")
                 }
+                .listRowBackground(ArrivalTheme.panel)
 
                 Section {
                     if store.hasFrames(scan) {
@@ -156,6 +231,7 @@ struct ScanDetailView: View {
                             if uploading { Spacer(); ProgressView() }
                         }
                     }
+                    .buttonStyle(ArrivalActionStyle(primary: true))
                     .disabled(uploading || zipping || serverURL.isEmpty)
                     if let jobID = scan.jobID {
                         LabeledContent("Job", value: jobID)
@@ -174,7 +250,7 @@ struct ScanDetailView: View {
                         Text(errorText).font(.footnote).foregroundStyle(.red)
                     }
                 } header: {
-                    Text("Arrival server")
+                    ArrivalSectionHeading(number: "02", title: "Build the twin")
                 } footer: {
                     if serverURL.isEmpty {
                         Text("Set the server URL on the first screen.")
@@ -184,8 +260,16 @@ struct ScanDetailView: View {
                              + ". The worker builds the twin, runs the sim and zips the dataset.")
                     }
                 }
+                .listRowBackground(ArrivalTheme.panel)
             }
-            .navigationTitle(scan.roomName)
+            .scrollContentBackground(.hidden)
+            .background(ArrivalPaper())
+            .foregroundStyle(ArrivalTheme.ink)
+            .tint(ArrivalTheme.signalInk)
+            .listRowSeparatorTint(ArrivalTheme.rule)
+            .navigationTitle("Survey details")
+            .toolbarBackground(ArrivalTheme.paper, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .navigationBarTitleDisplayMode(.inline)
             .task(id: scan.jobID) { await poll() }
             .task { await makeFramesZip(scan) }
