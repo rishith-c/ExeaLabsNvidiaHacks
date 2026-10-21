@@ -109,22 +109,48 @@ struct CaptureScreen: View {
         NavigationStack {
             RoomCaptureRepresentable(controller: controller, framesRoomID: recordFrames ? roomName : nil)
                 .ignoresSafeArea()
-                .overlay(alignment: .bottom) {
-                    if recordFrames && phase == .scanning {
-                        TimelineView(.periodic(from: .now, by: 1)) { _ in
-                            Text("RGB-D frames: \(controller.recorder?.keptCount ?? 0)")
-                                .font(.caption.monospacedDigit())
-                                .padding(.horizontal, 10).padding(.vertical, 4)
-                                .background(.thinMaterial, in: Capsule())
-                                .padding(.bottom, 24)
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text(phase == .scanning ? "01 / SURVEY" : phase == .processing ? "02 / PROCESS" : "03 / REVIEW")
+                                .font(ArrivalTheme.label())
+                                .tracking(1)
+                                .foregroundStyle(ArrivalTheme.signalInk)
+                            Spacer()
+                            if recordFrames && phase == .scanning {
+                                TimelineView(.periodic(from: .now, by: 1)) { _ in
+                                    Text("\(controller.recorder?.keptCount ?? 0) RGB-D frames")
+                                        .font(ArrivalTheme.label())
+                                        .foregroundStyle(ArrivalTheme.muted)
+                                }
+                            }
                         }
+                        Text(phase == .scanning ? "Take the room in." : phase == .processing ? "Building your room." : "A room, recorded.")
+                            .font(ArrivalTheme.heading(.title2))
+                        Text(phase == .scanning ? "Move slowly. Follow the room's walls, counters and appliances."
+                             : phase == .processing ? "Keep this screen open while RoomPlan processes the scan."
+                             : "Review the model, then save it to your surveys.")
+                            .font(.subheadline)
+                            .foregroundStyle(ArrivalTheme.muted)
                     }
+                    .foregroundStyle(ArrivalTheme.ink)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(20)
+                    .background(ArrivalTheme.panel)
+                    .overlay(alignment: .top) {
+                        Rectangle().fill(ArrivalTheme.rule).frame(height: 1)
+                    }
+                    .accessibilityElement(children: .combine)
                 }
                 .navigationTitle(roomName)
                 .navigationBarTitleDisplayMode(.inline)
+                .tint(ArrivalTheme.signalInk)
+                .toolbarBackground(ArrivalTheme.paper, for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel") { dismiss() }
+                            .foregroundStyle(ArrivalTheme.ink)
                     }
                     ToolbarItem(placement: .confirmationAction) {
                         switch phase {
@@ -133,10 +159,19 @@ struct CaptureScreen: View {
                                 phase = .processing
                                 controller.stop()
                             }
+                            .buttonStyle(.borderedProminent)
+                            .tint(ArrivalTheme.ink)
+                            .foregroundStyle(ArrivalTheme.paper)
+                            .buttonBorderShape(.capsule)
                         case .processing:
-                            ProgressView()
+                            ProgressView().accessibilityLabel("Processing scan")
                         case .review:
-                            Button("Save") { save() }.bold()
+                            Button("Save") { save() }
+                                .bold()
+                                .buttonStyle(.borderedProminent)
+                                .tint(ArrivalTheme.ink)
+                                .foregroundStyle(ArrivalTheme.paper)
+                                .buttonBorderShape(.capsule)
                         }
                     }
                 }
