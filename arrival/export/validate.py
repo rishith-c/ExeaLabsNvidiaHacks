@@ -32,10 +32,20 @@ def _check_slices(modality: dict, features: dict, errors: list[str]) -> None:
             errors.append(f"modality.json has no {group} slices")
             continue
         dim = (features.get(feat, {}).get("shape") or [None])[0]
-        spans = sorted((p.get("start"), p.get("end"), k) for k, p in parts.items())
+        spans = []
+        for k, part in parts.items():
+            if not isinstance(part, dict):
+                errors.append(f"modality {group}.{k} slice must be an object with integer start and end")
+            elif type(part.get("start")) is not int or type(part.get("end")) is not int:
+                errors.append(f"modality {group}.{k} slice start and end must be integers, not booleans")
+            else:
+                spans.append((part["start"], part["end"], k))
+        if len(spans) != len(parts):
+            continue
+        spans.sort()
         cursor = 0
         for start, end, k in spans:
-            if not isinstance(start, int) or not isinstance(end, int) or start != cursor or end <= start:
+            if start != cursor or end <= start:
                 errors.append(f"modality {group}.{k} slice [{start}, {end}) is not contiguous from {cursor}")
                 break
             cursor = end

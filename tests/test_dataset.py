@@ -290,3 +290,30 @@ def test_writer_checks_videos_before_writing_and_closes_sidecar(tmp_path):
     assert not list((tmp_path / "ds").glob("data/**/*.parquet"))
     w.close()
     assert w._sidecar.closed
+
+
+@pytest.mark.parametrize("group", ["state", "action"])
+@pytest.mark.parametrize("bad_slice", [None, [], {"end": 7}, {"start": "0", "end": 7},
+                                       {"start": 0, "end": "7"}, {"start": False, "end": 7},
+                                       {"start": 0, "end": True}])
+def test_validator_reports_malformed_slices_without_crashing(tmp_path, capsys, group, bad_slice):
+    result = run_demo("hero_kitchen", 1, "none", out_dir=tmp_path, scans_dir=SCANS, log=lambda *_: None)
+    ds = result["dataset"]
+    path = ds / "meta/modality.json"
+    modality = json.loads(path.read_text())
+    modality[group]["single_arm"] = bad_slice
+    path.write_text(json.dumps(modality))
+    assert any(f"{group}.single_arm" in error for error in validate(ds))
+    assert main(["validate", str(ds)]) == 1
+    assert f"{group}.single_arm" in capsys.readouterr().err
+
+
+def test_validator_accepts_slices_independent_of_json_key_order(tmp_path):
+    result = run_demo("hero_kitchen", 1, "none", out_dir=tmp_path, scans_dir=SCANS, log=lambda *_: None)
+    ds = result["dataset"]
+    path = ds / "meta/modality.json"
+    modality = json.loads(path.read_text())
+    for group in ("state", "action"):
+        modality[group] = dict(reversed(list(modality[group].items())))
+    path.write_text(json.dumps(modality))
+    assert validate(ds) == []
