@@ -25,7 +25,7 @@ enum ArrivalAPI {
         var errorDescription: String? {
             switch self {
             case .badServerURL(let s):
-                return "Not a server URL: \"\(s)\". Use the one `python -m arrival serve --host 0.0.0.0` prints, like http://192.168.1.20:8000"
+                return "Not a server URL: \"\(s)\". Use HTTP or HTTPS, like http://192.168.1.20:8000"
             case .http(let code, let body):
                 return "Server answered \(code): \(body)"
             }
@@ -36,7 +36,10 @@ enum ArrivalAPI {
         var s = server.trimmingCharacters(in: .whitespacesAndNewlines)
         if !s.contains("://") { s = "http://" + s }
         while s.hasSuffix("/") { s.removeLast() }
-        guard let url = URL(string: s), url.host != nil else { throw APIError.badServerURL(server) }
+        guard let url = URL(string: s),
+              let host = url.host, !host.isEmpty,
+              let scheme = url.scheme?.lowercased(), ["http", "https"].contains(scheme)
+        else { throw APIError.badServerURL(server) }
         return url
     }
 
