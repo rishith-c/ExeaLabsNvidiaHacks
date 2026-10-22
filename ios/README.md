@@ -94,3 +94,7 @@ Saved-survey safeguards: swipe a saved row and choose **Delete**, then confirm t
 **Cancel** keeps its files. Deletion removes the local capture only; copies already shared or uploaded
 remain at their destinations. When a survey has RGB-D frames, **Share / AirDrop** stays disabled until
 its archive is ready, so sharing does not silently omit those frames.
+
+Server addresses must use HTTP or HTTPS. A bare LAN address such as `192.168.1.20:8000` defaults to
+HTTP; surrounding whitespace and trailing slashes are removed. HTTPS and server path prefixes are
+preserved. Other schemes, such as `ftp://`, are rejected before a connection is attempted.
