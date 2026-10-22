@@ -143,3 +143,28 @@ def test_app_upload_body_with_frames_is_queued(bundle_check, recorded, tmp_path)
     status = json.loads((job / "status.json").read_text())
     assert status["frames"]["count"] == 6 and status["frames"]["heldout"] == 1
     assert (job / "frames" / "frames_manifest.json").is_file()
+
+
+@pytest.mark.parametrize(("server", "expected"), [
+    ("192.168.1.20:8000", "http://192.168.1.20:8000"),
+    ("  http://localhost:8000/\n", "http://localhost:8000"),
+    ("https://arrival.example///", "https://arrival.example"),
+    ("https://arrival.example/capture/", "https://arrival.example/capture"),
+    ("http://[::1]:8000", "http://[::1]:8000"),
+])
+def test_ios_server_url_normalization(bundle_check, server, expected):
+    result = subprocess.run([str(bundle_check), "base-url", server],
+                            capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == expected
+
+
+@pytest.mark.parametrize("server", [
+    "ftp://arrival.example", "file://localhost/tmp/arrival", "ws://localhost:8000",
+    "", "   ", "http://", "https:///",
+])
+def test_ios_rejects_invalid_server_addresses(bundle_check, server):
+    result = subprocess.run([str(bundle_check), "base-url", server],
+                            capture_output=True, text=True, timeout=10)
+    assert result.returncode == 1
+    assert "Not a server URL" in result.stderr
