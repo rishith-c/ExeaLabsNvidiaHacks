@@ -28,6 +28,15 @@ struct Spec: Decodable {
 }
 
 let args = CommandLine.arguments
+if args.count == 3, args[1] == "base-url" {
+    do {
+        print(try ArrivalAPI.baseURL(args[2]).absoluteString)
+        exit(0)
+    } catch {
+        FileHandle.standardError.write(Data("bundle_check: \(error.localizedDescription)\n".utf8))
+        exit(1)
+    }
+}
 if args.count == 6, args[1] == "multipart" {
     do {
         try ArrivalAPI.writeMultipart([
