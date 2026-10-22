@@ -89,3 +89,8 @@ xcodebuild -project ios/ArrivalCapture/ArrivalCapture.xcodeproj -scheme ArrivalC
 Check both appearances and an accessibility text size in Simulator. RoomPlan capture is disabled
 there: verify live coaching, Done, Save, Cancel and RGB-D recording on a supported LiDAR device before
 field use. The simulator build and screenshots do not establish capture quality or hardware behavior.
+
+Saved-survey safeguards: swipe a saved row and choose **Delete**, then confirm the named survey.
+**Cancel** keeps its files. Deletion removes the local capture only; copies already shared or uploaded
+remain at their destinations. When a survey has RGB-D frames, **Share / AirDrop** stays disabled until
+its archive is ready, so sharing does not silently omit those frames.
