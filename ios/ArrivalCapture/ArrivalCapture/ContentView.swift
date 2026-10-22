@@ -7,6 +7,7 @@ struct ContentView: View {
     @AppStorage("roomName") private var roomName = "kitchen"
     @AppStorage("recordFrames") private var recordFrames = true
     @State private var capturing = false
+    @State private var pendingDeletion: Scan?
     @State private var pingText: String?
     @State private var pinging = false
 
@@ -71,9 +72,12 @@ struct ContentView: View {
                         NavigationLink(value: scan.id) {
                             ScanRow(scan: scan)
                         }
-                    }
-                    .onDelete { offsets in
-                        offsets.map { store.scans[$0] }.forEach(store.delete)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button("Delete", systemImage: "trash") {
+                                pendingDeletion = scan
+                            }
+                            .tint(.red)
+                        }
                     }
                 } header: {
                     ArrivalSectionHeading(number: "02", title: "Saved surveys · \(store.scans.count)")
@@ -127,6 +131,18 @@ struct ContentView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(ArrivalTheme.paper, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
+            .alert("Delete saved survey?", isPresented: Binding(
+                get: { pendingDeletion != nil },
+                set: { if !$0 { pendingDeletion = nil } }
+            ), presenting: pendingDeletion) { scan in
+                Button("Delete survey", role: .destructive) {
+                    store.delete(scan)
+                    pendingDeletion = nil
+                }
+                Button("Cancel", role: .cancel) { pendingDeletion = nil }
+            } message: { scan in
+                Text("This permanently deletes \(scan.roomName) and its capture files from this device. Copies already shared or uploaded to a server remain there.")
+            }
             .navigationDestination(for: String.self) { ScanDetailView(scanID: $0) }
             .fullScreenCover(isPresented: $capturing) {
                 CaptureScreen(roomName: ScanStore.roomID(roomName), recordFrames: recordFrames)
@@ -154,15 +170,14 @@ private struct ScanRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(scan.roomName).font(ArrivalTheme.heading(.headline))
-            HStack {
-                Text(scan.created, style: .date)
-                Text(scan.created, style: .time)
-                if let status = scan.jobStatus {
-                    Text("· \(status)")
-                }
+            Text(scan.created.formatted(date: .abbreviated, time: .shortened))
+                .font(ArrivalTheme.label())
+                .foregroundStyle(ArrivalTheme.muted)
+            if let status = scan.jobStatus {
+                Text(status)
+                    .font(ArrivalTheme.label())
+                    .foregroundStyle(ArrivalTheme.signalInk)
             }
-            .font(ArrivalTheme.label())
-            .foregroundStyle(ArrivalTheme.muted)
         }
     }
 }
@@ -214,6 +229,8 @@ struct ScanDetailView: View {
                         Label("Share / AirDrop", systemImage: "square.and.arrow.up")
                     }
                     .buttonStyle(ArrivalActionStyle())
+                    .disabled(zipping || (store.hasFrames(scan)
+                        && !FileManager.default.fileExists(atPath: store.framesZipURL(scan).path)))
                 } header: {
                     ArrivalSectionHeading(number: "01", title: "Capture files")
                 }
