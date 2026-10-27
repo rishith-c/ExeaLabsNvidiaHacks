@@ -53,11 +53,12 @@ class Limits:
             raise LimitError(f"people {people} exceeds the limit of {self.max_people}")
 
     def replace(self, **kw) -> "Limits":
-        known = {f.name for f in fields(self)}
-        bad = set(kw) - known
+        values = {f.name: getattr(self, f.name) for f in fields(self)}
+        bad = set(kw) - values.keys()
         if bad:
             raise TypeError(f"unknown limits {sorted(bad)}")
-        return Limits(**{**{k: getattr(self, k) for k in known}, **{k: v for k, v in kw.items() if v is not None}})
+        values.update({k: v for k, v in kw.items() if v is not None})
+        return Limits(**values)
 
     @classmethod
     def from_env(cls, environ=None) -> "Limits":
